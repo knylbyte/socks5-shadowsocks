@@ -1,4 +1,4 @@
-name: Update crowdsec firewall bouncer
+name: Update proxy dependencies
 
 on:
   schedule:
@@ -19,47 +19,61 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get current version
+      - name: Get current versions
         id: current
         run: |
-          git fetch origin main --tags
-          current=$(git describe --abbrev=0 --tags origin/main 2>/dev/null || true)
-          echo "version=$current" >> "$GITHUB_OUTPUT"
+          ss=$(grep -oP 'ARG SHADOWSOCKS_VERSION=\K.*' Dockerfile)
+          tp=$(grep -oP 'ARG THREEPROXY_VERSION=\K.*' Dockerfile)
+          ar=$(grep -oP 'ARG ARIA2_VERSION=\K.*' Dockerfile)
+          echo "ss=$ss" >> "$GITHUB_OUTPUT"
+          echo "tp=$tp" >> "$GITHUB_OUTPUT"
+          echo "ar=$ar" >> "$GITHUB_OUTPUT"
 
-      - name: Get latest release
+      - name: Get latest releases
         id: latest
         run: |
-          latest=$(curl -s https://api.github.com/repos/crowdsecurity/cs-firewall-bouncer/releases/latest | jq -r '.tag_name')
-          if [ -z "$latest" ] || [ "$latest" = "null" ]; then
-            echo "Failed to fetch latest release tag." >&2
-            exit 1
-          fi
-          echo "version=$latest" >> "$GITHUB_OUTPUT"
+          ss=$(curl -s https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases/latest | jq -r '.tag_name')
+          tp=$(curl -s https://api.github.com/repos/3proxy/3proxy/releases/latest | jq -r '.tag_name')
+          ar=$(curl -s https://api.github.com/repos/aria2/aria2/releases/latest | jq -r '.tag_name')
+          echo "ss=$ss" >> "$GITHUB_OUTPUT"
+          echo "tp=$tp" >> "$GITHUB_OUTPUT"
+          echo "ar=$ar" >> "$GITHUB_OUTPUT"
 
-      - name: Update version
-        if: steps.current.outputs.version != steps.latest.outputs.version
+      - name: Update versions
+        id: update
         run: |
-          sed -i "s/ARG CS_VERSION=.*/ARG CS_VERSION=${{ steps.latest.outputs.version }}/" Dockerfile
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          if ! git diff --quiet Dockerfile; then
-            git commit -am "chore: update bouncer to ${{ steps.latest.outputs.version }}"
-            git push
+          changed=0
+          if [ "${{ steps.current.outputs.ss }}" != "${{ steps.latest.outputs.ss }}" ]; then
+            sed -i "s/ARG SHADOWSOCKS_VERSION=.*/ARG SHADOWSOCKS_VERSION=${{ steps.latest.outputs.ss }}/" Dockerfile
+            changed=1
           fi
-          git tag -a -f "${{ steps.latest.outputs.version }}" -m "Release ${{ steps.latest.outputs.version }}"
-          git push origin "${{ steps.latest.outputs.version }}"
-
-      - name: Create GitHub release
-        if: steps.current.outputs.version != steps.latest.outputs.version
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.latest.outputs.version }}
-          name: Release ${{ steps.latest.outputs.version }}
-          body: |
-            The GitHub Action workflow automatically updated the crowdsec-firewall-bouncer to version ${{ steps.latest.outputs.version }}.
+          if [ "${{ steps.current.outputs.tp }}" != "${{ steps.latest.outputs.tp }}" ]; then
+            sed -i "s/ARG THREEPROXY_VERSION=.*/ARG THREEPROXY_VERSION=${{ steps.latest.outputs.tp }}/" Dockerfile
+            changed=1
+          fi
+          if [ "${{ steps.current.outputs.ar }}" != "${{ steps.latest.outputs.ar }}" ]; then
+            sed -i "s/ARG ARIA2_VERSION=.*/ARG ARIA2_VERSION=${{ steps.latest.outputs.ar }}/" Dockerfile
+            changed=1
+          fi
+          if [ $changed -eq 1 ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git commit -am "chore: update proxy dependencies"
+            git push
+            latest_tag=$(git tag --list 'v*' | sort -V | tail -n1)
+            if [ -z "$latest_tag" ]; then
+              new_tag=v1
+            else
+              ver=${latest_tag#v}
+              new_tag=v$((ver + 1))
+            fi
+            git tag "$new_tag"
+            git push origin "$new_tag"
+            echo "tag=$new_tag" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Trigger docker build workflow
-        if: steps.current.outputs.version != steps.latest.outputs.version
+        if: steps.update.outputs.tag
         uses: actions/github-script@v7
         with:
           script: |
@@ -67,5 +81,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'docker-build.yml',
-              ref: '${{ steps.latest.outputs.version }}'
+              ref: '${{ steps.update.outputs.tag }}'
             })
