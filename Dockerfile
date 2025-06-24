@@ -2,7 +2,8 @@
 FROM rust:bookworm AS builder
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        build-essential git curl musl-tools libssl-dev libuv1-dev zlib1g-dev && \
+        build-essential git curl musl-tools libssl-dev libuv1-dev zlib1g-dev \
+        autoconf automake libtool pkg-config autopoint && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 ARG RUST_TARGET
@@ -27,6 +28,7 @@ RUN git clone --depth 1 -b "$THREEPROXY_VERSION" https://github.com/z3APA3A/3pro
 # build aria2
 RUN git clone --depth 1 -b "$ARIA2_VERSION" https://github.com/aria2/aria2.git \
     && cd aria2 \
+    && autoreconf -i \
     && ./configure --enable-static \
     && make \
     && cp src/aria2c /src/bin/
