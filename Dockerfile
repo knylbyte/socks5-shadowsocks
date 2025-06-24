@@ -15,9 +15,9 @@ RUN rustup target add "$RUST_TARGET"
 # build shadowsocks-rust
 RUN git clone --depth 1 -b "$SHADOWSOCKS_VERSION" https://github.com/shadowsocks/shadowsocks-rust.git \
     && cd shadowsocks-rust \
-    && cargo build --release --locked --target "$RUST_TARGET" \
+    && cargo build --release --locked --target "$RUST_TARGET" --bin ssserver --bin sslocal \
     && mkdir -p /src/bin \
-    && cp target/"$RUST_TARGET"/release/ssserver /src/bin/
+    && cp target/"$RUST_TARGET"/release/ssserver target/"$RUST_TARGET"/release/sslocal /src/bin/
 
 # build 3proxy
 RUN git clone --depth 1 -b "$THREEPROXY_VERSION" https://github.com/z3APA3A/3proxy.git \
@@ -44,5 +44,5 @@ COPY conf/aria2.conf /etc/aria2.conf
 RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 1080 3128 6800
 USER app
-HEALTHCHECK CMD ssserver -h || exit 1
+HEALTHCHECK CMD sslocal -h || exit 1
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
