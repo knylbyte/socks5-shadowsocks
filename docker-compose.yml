@@ -1,0 +1,31 @@
+version: "3.9"
+services:
+  shadowsocks:
+    build: .
+    image: yourrepo/shadowsocks:latest
+    env_file: .env
+    secrets:
+      - ss_password
+      - proxy_user
+      - proxy_pass
+    ports:
+      - "${SOCKS5_PROXY_PORT:-1080}:1080/tcp"
+      - "${HTTP_PROXY_PORT:-3128}:3128/tcp"
+      - "${ARIA2_PORT:-0}:6800/tcp"
+    devices:
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    healthcheck:
+      test: ["CMD", "ssserver", "-h"]
+      interval: 30s
+      retries: 3
+    restart: unless-stopped
+
+secrets:
+  ss_password:
+    file: ./secrets/ss_password.txt
+  proxy_user:
+    file: ./secrets/proxy_user.txt
+  proxy_pass:
+    file: ./secrets/proxy_pass.txt
