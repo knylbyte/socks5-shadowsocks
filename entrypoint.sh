@@ -8,7 +8,7 @@ if iptables -V 2>&1 | grep -q nf_tables; then
     fi
 fi
 
-SS_CMD="ssserver -s ${SS_SERVER_ADDR:-0.0.0.0} -p ${SS_SERVER_PORT:-1080} -m ${SS_METHOD:-chacha20-ietf-poly1305} -k ${SS_PASSWORD}"
+SS_CMD="ssserver -s ${SS_SERVER_ADDR:-0.0.0.0} -p ${SS_SERVER_PORT:-1080} -m ${SS_CIPHER:-chacha20-ietf-poly1305} -k ${SS_PASSWORD}"
 $SS_CMD &
 
 if [ -n "$SOCKS5_PROXY_PORT" ] || [ -n "$HTTP_PROXY_PORT" ]; then

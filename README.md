@@ -16,7 +16,7 @@ Variable | Default | Description
 ---|---|---
 `SS_SERVER_ADDR` | `0.0.0.0` | Shadowsocks bind address
 `SS_SERVER_PORT` | `1080` | Shadowsocks listening port
-`SS_METHOD` | `chacha20-ietf-poly1305` | Encryption method
+`SS_CIPHER` | `chacha20-ietf-poly1305` | Encryption method
 `SS_PASSWORD` | (empty) | Password for clients
 `SOCKS5_PROXY_PORT` | `1080` | 3proxy SOCKS5 port
 `HTTP_PROXY_PORT` | `3128` | 3proxy HTTP port
