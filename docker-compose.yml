@@ -17,7 +17,7 @@ services:
     cap_add:
       - NET_ADMIN
     healthcheck:
-      test: ["CMD", "ssserver", "-h"]
+      test: ["CMD", "sslocal", "-h"]
       interval: 30s
       retries: 3
     restart: unless-stopped
