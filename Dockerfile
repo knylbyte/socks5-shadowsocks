@@ -1,15 +1,16 @@
 # builder stage
-FROM golang:tip-alpine AS builder
-RUN apk add --no-cache --virtual .build-deps build-base git curl openssl-dev libuv-dev zlib-dev
+FROM rust:alpine AS builder
+RUN apk add --no-cache --virtual .build-deps build-base git curl openssl-dev libuv-dev zlib-dev musl-dev
 WORKDIR /src
-ENV GO111MODULE=on
+ARG RUST_TARGET
+RUN rustup target add "$RUST_TARGET"
 
 # build shadowsocks-rust
 RUN git clone --depth 1 https://github.com/shadowsocks/shadowsocks-rust.git \
     && cd shadowsocks-rust \
-    && cargo build --release --locked \
+    && cargo build --release --locked --target "$RUST_TARGET" \
     && mkdir -p /src/bin \
-    && cp target/release/ssserver /src/bin/
+    && cp target/"$RUST_TARGET"/release/ssserver /src/bin/
 
 # build 3proxy
 RUN git clone --depth 1 https://github.com/z3APA3A/3proxy.git \
