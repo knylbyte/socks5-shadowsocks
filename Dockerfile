@@ -1,6 +1,9 @@
 # builder stage
-FROM rust:alpine AS builder
-RUN apk add --no-cache --virtual .build-deps build-base git curl openssl-dev libuv-dev zlib-dev musl-dev
+FROM rust:bookworm AS builder
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential git curl musl-tools libssl-dev libuv1-dev zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 ARG RUST_TARGET
 ARG SHADOWSOCKS_VERSION=v1.23.4
@@ -18,8 +21,8 @@ RUN git clone --depth 1 -b "$SHADOWSOCKS_VERSION" https://github.com/shadowsocks
 # build 3proxy
 RUN git clone --depth 1 -b "$THREEPROXY_VERSION" https://github.com/z3APA3A/3proxy.git \
     && cd 3proxy \
-    && make -f Makefile.Linux \
-    && cp src/3proxy /src/bin/
+    && make -f Makefile.Linux CC=musl-gcc PLUGINS="StringsPlugin TrafficPlugin PCREPlugin" \
+    && cp bin/3proxy /src/bin/
 
 # build aria2
 RUN git clone --depth 1 -b "$ARIA2_VERSION" https://github.com/aria2/aria2.git \
@@ -28,7 +31,6 @@ RUN git clone --depth 1 -b "$ARIA2_VERSION" https://github.com/aria2/aria2.git \
     && make \
     && cp src/aria2c /src/bin/
 
-RUN apk del .build-deps
 
 # runtime stage
 FROM alpine:latest
