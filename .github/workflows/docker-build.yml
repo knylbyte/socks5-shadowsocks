@@ -17,10 +17,13 @@ jobs:
         include:
           - platform: linux/amd64
             runner: ubuntu-22.04
-          - platform: linux/arm64
+            rust_target: x86_64-unknown-linux-musl
+          - platform: linux/aarch64
             runner: ubuntu-22.04-arm
+            rust_target: aarch64-unknown-linux-musl
           - platform: linux/arm/v7
             runner: ubuntu-22.04-arm
+            rust_target: armv7-unknown-linux-musleabihf
     runs-on: ${{ matrix.runner || 'ubuntu-22.04' }}
     steps:
       - name: Checkout source
