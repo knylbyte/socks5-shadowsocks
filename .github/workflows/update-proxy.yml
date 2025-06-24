@@ -1,0 +1,71 @@
+name: Update crowdsec firewall bouncer
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Get current version
+        id: current
+        run: |
+          git fetch origin main --tags
+          current=$(git describe --abbrev=0 --tags origin/main 2>/dev/null || true)
+          echo "version=$current" >> "$GITHUB_OUTPUT"
+
+      - name: Get latest release
+        id: latest
+        run: |
+          latest=$(curl -s https://api.github.com/repos/crowdsecurity/cs-firewall-bouncer/releases/latest | jq -r '.tag_name')
+          if [ -z "$latest" ] || [ "$latest" = "null" ]; then
+            echo "Failed to fetch latest release tag." >&2
+            exit 1
+          fi
+          echo "version=$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Update version
+        if: steps.current.outputs.version != steps.latest.outputs.version
+        run: |
+          sed -i "s/ARG CS_VERSION=.*/ARG CS_VERSION=${{ steps.latest.outputs.version }}/" Dockerfile
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          if ! git diff --quiet Dockerfile; then
+            git commit -am "chore: update bouncer to ${{ steps.latest.outputs.version }}"
+            git push
+          fi
+          git tag -a -f "${{ steps.latest.outputs.version }}" -m "Release ${{ steps.latest.outputs.version }}"
+          git push origin "${{ steps.latest.outputs.version }}"
+
+      - name: Create GitHub release
+        if: steps.current.outputs.version != steps.latest.outputs.version
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.latest.outputs.version }}
+          name: Release ${{ steps.latest.outputs.version }}
+          body: |
+            The GitHub Action workflow automatically updated the crowdsec-firewall-bouncer to version ${{ steps.latest.outputs.version }}.
+
+      - name: Trigger docker build workflow
+        if: steps.current.outputs.version != steps.latest.outputs.version
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'docker-build.yml',
+              ref: '${{ steps.latest.outputs.version }}'
+            })
