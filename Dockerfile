@@ -7,7 +7,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 ARG RUST_TARGET
-ARG SHADOWSOCKS_VERSION=v1.23.4
+ARG SHADOWSOCKS_VERSION=v1.23.5
 ARG THREEPROXY_VERSION=0.9.5
 ARG ARIA2_VERSION=release-1.37.0
 RUN rustup target add "$RUST_TARGET"
